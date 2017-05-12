@@ -22,7 +22,7 @@ function varargout = MeasureScriptGUI(varargin)
 
 % Edit the above text to modify the response to help MeasureScriptGUI
 
-% Last Modified by GUIDE v2.5 10-Apr-2017 11:48:31
+% Last Modified by GUIDE v2.5 12-May-2017 09:27:10
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -47,10 +47,8 @@ end
 % --- Executes just before MeasureScriptGUI is made visible.
 function MeasureScriptGUI_OpeningFcn(hObject, eventdata, handles, varargin)
 % varargin   command line arguments to MeasureScriptGUI (see VARARGIN)
-
 % Choose default command line output for MeasureScriptGUI
 handles.output = hObject;
-
 %set additional properties for axes
 title(handles.GraphLocalT    ,'Local Temperature Distribution')
 xlabel(handles.GraphLocalT   ,'Temperature Sensors','FontSize',8)
@@ -69,7 +67,7 @@ handles.Thermostat = MockThermostat();
 handles.Spectrometer = MockSpectrometer();
 % connect devices
 handles.Thermometer.connect();
-handles.Thermostat.connect()
+handles.Thermostat.connect();
 handles.Spectrometer.connect();
 % Parameter class to store values
 handles.Parameters = Parameters();
@@ -81,15 +79,8 @@ handles.temperatureHistory = ones(120, 7)*20;
 handles.temperatureTimestamps = ones(120, 1);
 handles.DATA = struct();
 handles.counter = 1;
-%
-handles.toc_spectro = [];
-handles.toc_temperature = [];
-%
-
-
 % update the GUI edit fields
 set(handles.MolfractionInit_SV  ,'String',handles.Parameters.molfractionInit);
-% set(handles.Phasestate_SV       ,'String',handles.Parameters.phasestate);
 set(handles.CurrentSP_Value     ,'String',handles.Parameters.currentSetpoint);
 set(handles.Tstart_SV           ,'String',handles.Parameters.tStart);
 set(handles.Tstop_SV            ,'String',handles.Parameters.tStop);
@@ -122,7 +113,6 @@ handles.Spectrometer.setIntegrationTime(handles.Parameters.integrationTime);
 guidata(hObject,handles);
 pause(1);
 startGUI();
-%continuousMode();
 
 function startGUI
 handles = guidata(gcf);
@@ -135,7 +125,6 @@ start(handles.refresh_timer);
 guidata(gcf,handles);
 
 function temperature
-tic;
     handles = guidata(gcf);
     [currentTemperatures, temp_timestamp] = currentT(handles.Thermostat.getPV(),handles.Thermometer.getPV(),handles.Parameters.pressure,handles.SavePath);
     handles.temperatureHistory = [handles.temperatureHistory(2:end,:); currentTemperatures];
@@ -152,19 +141,14 @@ tic;
     end
     plot(handles.GraphTimeT,1:120,handles.temperatureHistory(:,2),1:120,handles.temperatureHistory(:,5));
     plot(handles.GraphLocalT,handles.temperatureHistory(120,1:6));
-    t = toc;
-    handles.toc_temperature= [handles.toc_temperature t];
     guidata(gcf,handles);
   
     
 function spectrum
-tic
     handles = guidata(gcf);
     handles.intensity = handles.Spectrometer.getSpectrum();
     if and(handles.counter <= handles.Parameters.numberOfSpectra,handles.Parameters.measure)
         [tMean] = currentTMean(handles.Thermostat.getPV(),handles.Thermometer.getPV());
-%         [currentTemperatureMean] = currentTMean(handles.Thermostat.getPV(),handles.Thermometer.getPV());
-%         tMean = (currentTemperatureMean(4)+currentTemperatureMean(5)+currentTemperatureMean(6))/3;
         if handles.Parameters.background
             spectrum = Data(tMean,handles.Parameters.pressure,handles.wavenumber,handles.intensity,...
                 ['bg_' datestr(now, 'HHMMSS') '_' num2str(handles.counter)],handles.SavePath,...
@@ -211,8 +195,6 @@ tic
         handles.DATA.(handles.SpectraList.UserData{selected}).plotData(handles.GraphSpectrum);
         xlim(handles.GraphSpectrum,[handles.Parameters.wMin handles.Parameters.wMax]);
     end
-    t = toc;
-    handles.toc_spectro = [handles.toc_spectro t];
     guidata(gcf,handles);
     
 function [T,timestamp] = currentT(ThermostatValues,ThermometerValues,pressure,basicPath)
@@ -248,19 +230,6 @@ function refresh
     guidata(gcf,handles);
 
 %Callbacks
-% function Phasestate_SV_Callback(hObject, eventdata, handles)
-% phasestate = round(str2double(get(hObject,'String')));
-% if isnan(phasestate)
-%     phasestate = 1;
-% elseif phasestate < 1
-%     phasestate = 1;
-% elseif phasestate > 3
-%     phasestate = 3;
-% end
-% set(hObject,'String',phasestate);
-% handles.Parameters.phasestate = phasestate;
-% guidata(hObject,handles);
-
 function MolfractionInit_SV_Callback(hObject, eventdata, handles)
 molfrac = str2double(get(hObject,'String'));
 if isnan(molfrac)
@@ -455,27 +424,28 @@ guidata(hObject,handles);
 
 function SpectraList_Callback(hObject, eventdata, handles) %#ok<*INUSD>
 
-function Exit_Callback(hObject, eventdata, handles)
-stop(handles.refresh_timer);
-stop(handles.temp_timer);
-stop(handles.spectro_timer);
-delete(handles.refresh_timer);
-delete(handles.temp_timer);
-delete(handles.spectro_timer);
-%Reset thermostat to 20 degree
-handles.Thermostat.reset();
-handles.Spectrometer.disconnect();
-handles.Thermometer.disconnect();
-handles.Thermostat.disconnect();
-pause(2);
-assignin('base','toc_spectro',handles.toc_spectro);
-assignin('base','toc_temperature',handles.toc_spectro);
-%close all connected devices
-close all;
+function figure1_CloseRequestFcn(hObject, eventdata, handles)
+try
+    stop(handles.refresh_timer);
+    stop(handles.temp_timer);
+    stop(handles.spectro_timer);
+    delete(handles.refresh_timer);
+    delete(handles.temp_timer);
+    delete(handles.spectro_timer);
+    %Reset thermostat to 20 degree
+    handles.Thermostat.reset();
+    handles.Spectrometer.disconnect();
+    handles.Thermometer.disconnect();
+    handles.Thermostat.disconnect();
+    pause(2);
+    close all;
+catch
+    close all;
+end
 
 function Wmin_Callback(hObject, eventdata, handles) %#ok<*DEFNU,*INUSL>
 Wmin = str2double(get(hObject,'String'));
-max_Wmin = handles.Parameters.wMax;
+max_Wmin = handles.Parameters.wMax - 10;
 if isnan(Wmin)
     Wmin = 0;
 elseif Wmin < 0
@@ -601,4 +571,11 @@ end
 % --------------------------------------------------------------------
 function saveParameters_Callback(hObject, eventdata, handles)
 handles.Parameters.saveParameters(handles.SavePath);
+
+
+% --------------------------------------------------------------------
+function menu_Callback(hObject, eventdata, handles)
+% hObject    handle to menu (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
 
