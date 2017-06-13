@@ -36,10 +36,8 @@ classdef MockThermostat < handle
         end
         function SV = getSV(obj)
             if ~obj.test
-               % SV = [obj.opcItems(3).Value obj.opcItems(4).Value];
                SV = obj.opcItems(3).Value;
             end
-            %SV = [obj.SetpointValue obj.SetpointValue];
             SV = obj.SetpointValue;
         end
         function setPV(obj,PV)
@@ -49,11 +47,6 @@ classdef MockThermostat < handle
             if ~obj.test
                 PV = [obj.opcItems(1).Value obj.opcItems(2).Value];
                 n = 0;
-%                 while or(numel(PV) ~= 2, n ~= 20) 
-%                     PV = [obj.opcItems(1).Value obj.opcItems(2).Value];
-%                     n = n + 1;
-%                     pause(0.1);
-%                 end
                 while numel(PV) ~= 2
                     PV = [obj.opcItems(1).Value obj.opcItems(2).Value];
                     n = n + 1;
@@ -65,7 +58,7 @@ classdef MockThermostat < handle
                 return
             else
                 x = 0:1:1200*pi;
-                obj.ProcessValue = obj.SetpointValue + dampOscillation(x(obj.index));
+                obj.ProcessValue = obj.SetpointValue + rand(10);
                 PV = [obj.ProcessValue+rand(1) obj.ProcessValue+rand(1)];
                 if obj.index > length(x)
                     obj.index = 1;

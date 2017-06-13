@@ -18,6 +18,8 @@ classdef Parameters < handle
         wMax
         infoText
         background
+        laserWavelength
+        basicPath
     end
     methods
         function obj = Parameters()
@@ -39,6 +41,8 @@ classdef Parameters < handle
         obj.wMax            = 4500;
         obj.background      = 0;
         obj.infoText        = ' ';
+        obj.laserWavelength = 532.24;
+        obj.basicPath       = 'C:\Users\FuelCaps\Desktop\FuelCaps\Versuche\';
         end
         function updateAcquisitionTime(obj)
             obj.acquisitionTime = obj.integrationTime*obj.scansToAverage/1E6;

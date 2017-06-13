@@ -29,9 +29,9 @@ classdef MockSpectrometer < handle
             end
             obj.integrationTime = intTime;
         end
-        function WL = getWavenumbers(obj)
+        function WL = getWavenumbers(obj,laserWavelength)
             if ~obj.test
-                WL = (1/532 - 1./obj.spectro.getWavelengths(0))*1E7;
+                WL = (1/laserWavelength - 1./obj.spectro.getWavelengths(0))*1E7;
             else
                 WL = 1500:4000;
                 WL = WL(:);
@@ -46,10 +46,10 @@ classdef MockSpectrometer < handle
             if ~obj.test
                 Intensity = obj.spectro.getSpectrum(0);
             else
-                Intensity = randomizeData();
-                Intensity = Intensity(:);
+                Intensity = rand(2501,1);
             end
         end
+
     end
 end
 
