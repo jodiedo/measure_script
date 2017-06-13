@@ -76,7 +76,6 @@ handles.basicPath = 'C:\Users\FuelCaps\Desktop\FuelCaps\Versuche\';
 handles.wavenumber = handles.Spectrometer.getWavenumbers();
 handles.intensity = zeros(length(handles.wavenumber),1);
 handles.temperatureHistory = ones(120, 7)*20;
-handles.temperatureTimestamps = ones(120, 1);
 handles.DATA = struct();
 handles.counter = 1;
 % update the GUI edit fields
@@ -197,7 +196,7 @@ function spectrum
     end
     guidata(gcf,handles);
     
-function [T,timestamp] = currentT(ThermostatValues,ThermometerValues,pressure,basicPath)
+function T = currentT(ThermostatValues,ThermometerValues,pressure,basicPath)
     T = zeros(1,7);
     T(1) = ThermometerValues(2);
     T(2) = ThermostatValues(1);
@@ -212,7 +211,7 @@ function [T,timestamp] = currentT(ThermostatValues,ThermometerValues,pressure,ba
     end
     dlmwrite([basicPath 'Temperatures.txt'] , [timestamp T pressure], '-append', 'precision', '%3.2f', 'delimiter', '\t', 'newline', 'pc'); 
     
-function [tMean] = currentTMean(ThermostatValues,ThermometerValues)
+function tMean = currentTMean(ThermostatValues,ThermometerValues)
     T = zeros(1,7);
     T(1) = ThermometerValues(2);
     T(2) = ThermostatValues(1);
@@ -260,6 +259,8 @@ handles.Thermostat.setSV(currentSP);
 guidata(hObject, handles);
     
 function IntTime_SV_Callback(hObject, eventdata, handles)
+stop(handles.spectro_timer);
+delete(handles.spectro_timer);
 IntegrationTime = str2double(get(hObject,'String'));
 if isnan(IntegrationTime)
     IntegrationTime = 1;
@@ -270,8 +271,6 @@ set(hObject,'String',IntegrationTime);
 handles.Spectrometer.setIntegrationTime(IntegrationTime*1E6);
 handles.Parameters.integrationTime = IntegrationTime*1E6;
 handles.Parameters.updateAcquisitionTime();
-stop(handles.spectro_timer);
-delete(handles.spectro_timer);
 handles.spectro_timer = timer('BusyMode','drop','ExecutionMode','FixedSpacing','Name','spectroTimer','Period',(handles.Parameters.aquisitionTime-0.4),'TimerFcn',@(~,~)spectrum);
 start(handles.spectro_timer);
 guidata(hObject, handles);
@@ -288,6 +287,8 @@ handles.Parameters.numberOfSpectra = NrOfSpectra;
 guidata(hObject, handles);
 
 function ScansToAverage_SV_Callback(hObject, eventdata, handles)
+stop(handles.spectro_timer);
+delete(handles.spectro_timer);
 ScansToAverage = str2double(get(hObject,'String'));
 if isnan(ScansToAverage)
     ScansToAverage = 1;
@@ -297,8 +298,6 @@ end
 set(hObject,'String',ScansToAverage);
 handles.Parameters.scansToAverage = ScansToAverage;
 handles.Parameters.updateAcquisitionTime();
-stop(handles.spectro_timer);
-delete(handles.spectro_timer);
 handles.spectro_timer = timer('BusyMode','drop','ExecutionMode','FixedSpacing','Name','spectroTimer','Period',(handles.Parameters.aquisitionTime-0.4),'TimerFcn',@(~,~)spectrum);
 start(handles.spectro_timer);
 guidata(hObject, handles);
