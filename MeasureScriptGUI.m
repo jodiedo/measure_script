@@ -22,7 +22,7 @@ function varargout = MeasureScriptGUI(varargin)
 
 % Edit the above text to modify the response to help MeasureScriptGUI
 
-% Last Modified by GUIDE v2.5 12-May-2017 09:27:10
+% Last Modified by GUIDE v2.5 13-Jun-2017 10:02:43
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -46,20 +46,8 @@ end
 
 % --- Executes just before MeasureScriptGUI is made visible.
 function MeasureScriptGUI_OpeningFcn(hObject, eventdata, handles, varargin)
-% varargin   command line arguments to MeasureScriptGUI (see VARARGIN)
 % Choose default command line output for MeasureScriptGUI
 handles.output = hObject;
-%set additional properties for axes
-title(handles.GraphLocalT    ,'Local Temperature Distribution')
-xlabel(handles.GraphLocalT   ,'Temperature Sensors','FontSize',8)
-ylabel(handles.GraphLocalT   ,'Temperature in °C','FontSize',8)
-title(handles.GraphTimeT     ,'Temporal Temperature Distribution')
-xlabel(handles.GraphTimeT    ,'Time in s','FontSize',8)
-ylabel(handles.GraphTimeT    ,'Temperature in °C','FontSize',8)
-legend(handles.GraphTimeT    ,'Sensor 2','Sensor 5')
-title(handles.GraphSpectrum  ,'Spectrum')
-xlabel(handles.GraphSpectrum ,'Wavenumber in 1/cm','FontSize',8)
-ylabel(handles.GraphSpectrum ,'Intensity','FontSize',8)
 %devices, add an argument to start in test mode (device response getting
 %mocked)
 handles.Thermometer = MockThermometer();
@@ -72,8 +60,7 @@ handles.Spectrometer.connect();
 % Parameter class to store values
 handles.Parameters = Parameters();
 %
-handles.basicPath = 'C:\Users\FuelCaps\Desktop\FuelCaps\Versuche\';
-handles.wavenumber = handles.Spectrometer.getWavenumbers();
+handles.wavenumber = handles.Spectrometer.getWavenumbers(handles.Parameters.laserWavelength);
 handles.intensity = zeros(length(handles.wavenumber),1);
 handles.temperatureHistory = ones(120, 7)*20;
 handles.DATA = struct();
@@ -89,23 +76,19 @@ set(handles.DeltaT_SV           ,'String',handles.Parameters.deltaT);
 set(handles.NrOfSpectra_SV      ,'String',handles.Parameters.numberOfSpectra);
 set(handles.ScansToAverage_SV   ,'String',handles.Parameters.scansToAverage);
 set(handles.IntTime_SV          ,'String',handles.Parameters.integrationTime/1E6);
-set(handles.CurrentSavePath     ,'String',handles.basicPath);
+set(handles.CurrentSavePath     ,'String',handles.Parameters.basicPath);
 set(handles.MeasureMode         ,'Value' ,1);
 % Update handles structure
 guidata(hObject, handles);
-plot(handles.GraphSpectrum,handles.wavenumber,handles.intensity);
-plot(handles.GraphLocalT,zeros(1,7));
-plot(handles.GraphTimeT,handles.temperatureHistory(:,2));
- 
 
 function varargout = MeasureScriptGUI_OutputFcn(hObject, eventdata, handles) 
 % Get default command line output from handles structure
 varargout{1} = handles.output;  
-if ~exist([handles.basicPath datestr(now, 'yymmdd')], 'dir')
-        mkdir(handles.basicPath, datestr(now, 'yymmdd'));
-        handles.SavePath = [handles.basicPath datestr(now, 'yymmdd') '\'];
+if ~exist([handles.Parameters.basicPath datestr(now, 'yymmdd')], 'dir')
+        mkdir(handles.Parameters.basicPath, datestr(now, 'yymmdd'));
+        handles.SavePath = [handles.Parameters.basicPath datestr(now, 'yymmdd') '\'];
 else
-        handles.SavePath = [handles.basicPath datestr(now, 'yymmdd') '\'];
+        handles.SavePath = [handles.Parameters.basicPath datestr(now, 'yymmdd') '\'];
 end
 set(handles.CurrentSavePath,'String',handles.SavePath);
 handles.Spectrometer.setIntegrationTime(handles.Parameters.integrationTime);
@@ -125,9 +108,8 @@ guidata(gcf,handles);
 
 function temperature
     handles = guidata(gcf);
-    [currentTemperatures, temp_timestamp] = currentT(handles.Thermostat.getPV(),handles.Thermometer.getPV(),handles.Parameters.pressure,handles.SavePath);
+    currentTemperatures = currentT(handles.Thermostat.getPV(),handles.Thermometer.getPV(),handles.Parameters.pressure,handles.SavePath);
     handles.temperatureHistory = [handles.temperatureHistory(2:end,:); currentTemperatures];
-    handles.temperatureTimestamps = [handles.temperatureTimestamps(2:end,1); temp_timestamp];
     currentDeltaT = (mean(abs(handles.temperatureHistory(91:end,2)-handles.Parameters.currentSetpoint))+...
                 mean(abs(handles.temperatureHistory(91:end,5)-handles.Parameters.currentSetpoint)))/2;
     set(handles.currentDeltaT_SV,'String',sprintf('%4.3f',currentDeltaT));
@@ -139,10 +121,11 @@ function temperature
         set(handles.CurrentSP_Value,'String',handles.Parameters.tStart);
     end
     plot(handles.GraphTimeT,1:120,handles.temperatureHistory(:,2),1:120,handles.temperatureHistory(:,5));
+    formatGraphTimeT(handles.GraphTimeT);
     plot(handles.GraphLocalT,handles.temperatureHistory(120,1:6));
+    formatGraphLocalT(handles.GraphLocalT);
     guidata(gcf,handles);
-  
-    
+      
 function spectrum
     handles = guidata(gcf);
     handles.intensity = handles.Spectrometer.getSpectrum();
@@ -188,6 +171,7 @@ function spectrum
     end
     if get(handles.MeasureMode,'Value') == 1
         plot(handles.GraphSpectrum,handles.wavenumber,handles.intensity);
+        formatGraphSpectrum(handles.GraphSpectrum);
         xlim(handles.GraphSpectrum,[handles.Parameters.wMin handles.Parameters.wMax]);
     elseif length(handles.SpectraList.UserData) > 1
         selected = get(handles.SpectraList,'Value');
@@ -271,7 +255,7 @@ set(hObject,'String',IntegrationTime);
 handles.Spectrometer.setIntegrationTime(IntegrationTime*1E6);
 handles.Parameters.integrationTime = IntegrationTime*1E6;
 handles.Parameters.updateAcquisitionTime();
-handles.spectro_timer = timer('BusyMode','drop','ExecutionMode','FixedSpacing','Name','spectroTimer','Period',(handles.Parameters.aquisitionTime-0.4),'TimerFcn',@(~,~)spectrum);
+handles.spectro_timer = timer('BusyMode','drop','ExecutionMode','FixedSpacing','Name','spectroTimer','Period',(handles.Parameters.acquisitionTime-0.4),'TimerFcn',@(~,~)spectrum);
 start(handles.spectro_timer);
 guidata(hObject, handles);
 
@@ -298,7 +282,7 @@ end
 set(hObject,'String',ScansToAverage);
 handles.Parameters.scansToAverage = ScansToAverage;
 handles.Parameters.updateAcquisitionTime();
-handles.spectro_timer = timer('BusyMode','drop','ExecutionMode','FixedSpacing','Name','spectroTimer','Period',(handles.Parameters.aquisitionTime-0.4),'TimerFcn',@(~,~)spectrum);
+handles.spectro_timer = timer('BusyMode','drop','ExecutionMode','FixedSpacing','Name','spectroTimer','Period',(handles.Parameters.acquisitionTime-0.4),'TimerFcn',@(~,~)spectrum);
 start(handles.spectro_timer);
 guidata(hObject, handles);
 
@@ -411,12 +395,12 @@ guidata(hObject,handles);
 
 function ChangePath_Callback(hObject, eventdata, handles)
 new_path = uigetdir;
-handles.basicPath = [new_path '\'];
-if ~exist([handles.basicPath datestr(now, 'yymmdd')], 'dir')
-        mkdir(handles.basicPath, datestr(now, 'yymmdd'));
-        handles.SavePath = [handles.basicPath datestr(now, 'yymmdd') '\'];
+handles.Parameters.basicPath = [new_path '\'];
+if ~exist([handles.Parameters.basicPath datestr(now, 'yymmdd')], 'dir')
+        mkdir(handles.Parameters.basicPath, datestr(now, 'yymmdd'));
+        handles.SavePath = [handles.Parameters.basicPath datestr(now, 'yymmdd') '\'];
 else
-        handles.SavePath = [handles.basicPath datestr(now, 'yymmdd') '\'];
+        handles.SavePath = [handles.Parameters.basicPath datestr(now, 'yymmdd') '\'];
 end
 set(handles.CurrentSavePath,'String',handles.SavePath);
 guidata(hObject,handles);
@@ -564,17 +548,25 @@ function Phasestate_CreateFcn(hObject, eventdata, handles)
 if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor','white');
 end
-%
 
-
-% --------------------------------------------------------------------
 function saveParameters_Callback(hObject, eventdata, handles)
 handles.Parameters.saveParameters(handles.SavePath);
 
-
-% --------------------------------------------------------------------
 function menu_Callback(hObject, eventdata, handles)
-% hObject    handle to menu (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
 
+
+function formatGraphLocalT(localAxe)
+title(localAxe,'Local Temperature Distribution')
+xlabel(localAxe,'Temperature Sensors','FontSize',8)
+ylabel(localAxe,'Temperature in °C','FontSize',8)
+
+function formatGraphTimeT(timeAxe)
+title(timeAxe,'Temporal Temperature Distribution')
+xlabel(timeAxe,'Time in s','FontSize',8)
+ylabel(timeAxe,'Temperature in °C','FontSize',8)
+legend(timeAxe,'Sensor 2','Sensor 5','Location','northwest')
+
+function formatGraphSpectrum(specAxe)
+title(specAxe,'Spectrum')
+xlabel(specAxe,'Wavenumber in 1/cm','FontSize',8)
+ylabel(specAxe,'Intensity','FontSize',8)
